@@ -12,22 +12,35 @@ import org.apache.poi.ss.usermodel.*;
 public class ExcelComparison {
 
     public static Map<String, List<String>> groupedCellChanges = new HashMap<>();
+    public static Map<String, String> groupedDifferencesOnlyValues = new HashMap<>();
 
     public static String v1FolderPath = "";
+
+    public static Set<String> sheetCollection = new HashSet<>();
+
+    public static Set<Integer> rowChanges = new HashSet<>();
+
+    public static Set<String> columnChanges = new HashSet<>();
+
+    public static Map<String,String> rowChangesMessageMap = new HashMap<>();
 
     public static void main(String[] args) throws IOException {
 
 
          //Takes input of two folders from USER
-         Scanner input = new Scanner(System.in);
+//         Scanner input = new Scanner(System.in);
 
-         System.out.print("Enter path of version1 folder :: ");
-         v1FolderPath = input.nextLine();
-         System.out.print("Enter path of version2 folder :: ");
-         String v2FolderPath = input.nextLine();
-
-        System.out.print("Enter output folder path :: ");
-        String outputFolderPath = input.nextLine();
+//         System.out.print("Enter path of version1 folder :: ");
+//         v1FolderPath = input.nextLine();
+//         System.out.print("Enter path of version2 folder :: ");
+//         String v2FolderPath = input.nextLine();
+//
+//        System.out.print("Enter output folder path :: ");
+//        String outputFolderPath = input.nextLine();
+//
+            v1FolderPath = "C:\\Users\\HET SHAH\\OneDrive\\Desktop\\output\\9b2fc623104532fa09b9db54a2d2a5fc7c57d8a5";
+            String v2FolderPath = "C:\\Users\\HET SHAH\\OneDrive\\Desktop\\output\\f836ece227d98bceda7b89d31b0614a35ed6e5e9";
+            String outputFolderPath = "C:\\Users\\HET SHAH\\OneDrive\\Desktop\\output\\diff";
 
         boolean areVersionsSame = compareExcelFilesInFolders(v1FolderPath, v2FolderPath,outputFolderPath);
 
@@ -53,8 +66,8 @@ public class ExcelComparison {
 
         return areVersionsSame;
     }
-
     private static boolean compareExcelFilesRecursively(File v1Folder, File v2Folder,String outputFolderPath) throws IOException {
+
         File[] v1Files = v1Folder.listFiles();
         File[] v2Files = v2Folder.listFiles();
 
@@ -163,6 +176,43 @@ public class ExcelComparison {
             overallSummaryFileWriter.write("\n");
 
             overallSummaryFileWriter.write("------------------------------------------------------\n");
+            overallSummaryFileWriter.write("Global Changes in Files: "+"\n");
+            overallSummaryFileWriter.write("------------------------------------------------------\n");
+            overallSummaryFileWriter.write("\t\t\t\t* Row - ");
+            for(Integer rowNumber:rowChanges){
+                overallSummaryFileWriter.write(rowNumber+",");
+            }
+            overallSummaryFileWriter.write("\n");
+            overallSummaryFileWriter.write("\t\t\t\t* Column - ");
+            for(String colNumber:columnChanges){
+                overallSummaryFileWriter.write(colNumber+",");
+            }
+            overallSummaryFileWriter.write("\n");
+            overallSummaryFileWriter.write("\n");
+
+            overallSummaryFileWriter.write("------------------------------------------------------\n");
+            overallSummaryFileWriter.write("Global Changes in Sheets: "+"\n");
+            overallSummaryFileWriter.write("------------------------------------------------------\n");
+            for (String sheetName : sheetCollection) {
+                overallSummaryFileWriter.write("                    "+"* "+sheetName+"\n");
+            }
+            overallSummaryFileWriter.write("\n");
+            overallSummaryFileWriter.write("\n");
+
+            if(!rowChangesMessageMap.isEmpty()){
+                overallSummaryFileWriter.write("------------------------------------------------------\n");
+                overallSummaryFileWriter.write("Rows Affected: "+"\n");
+                overallSummaryFileWriter.write("------------------------------------------------------\n");
+                for(Map.Entry<String,String> entry : rowChangesMessageMap.entrySet())
+                {
+                    overallSummaryFileWriter.write("     * "+entry.getKey()+" ----> "+entry.getValue()+"\n");
+                }
+                overallSummaryFileWriter.write("\n");
+                overallSummaryFileWriter.write("\n");
+            }
+
+
+            overallSummaryFileWriter.write("------------------------------------------------------\n");
             overallSummaryFileWriter.write("Cell changes in Files"+"\n");
             overallSummaryFileWriter.write("------------------------------------------------------\n");
             overallSummaryFileWriter.write("Cell Number     :    FileName/SheetName"+"\n");
@@ -181,13 +231,15 @@ public class ExcelComparison {
                 char columnChar = (char) ('A' + (column - 1));
 
                 overallSummaryFileWriter.write("   "  + columnChar + row + "     \t:\t"+"\n");
+
                 for(String fileAndSheet : filesAndSheets)
                 {
                     String[] fileSheet = fileAndSheet.split("/");
                     String fName = fileSheet[0];
                     String sName = fileSheet[1];
+                    String searchKey = fName+"#"+sName+"#"+cellKey;
 
-                    overallSummaryFileWriter.write( "                   "+"* "+fName  + "/" +  sName + " \n ");
+                    overallSummaryFileWriter.write( "\t\t\t"+"* "+fName  + "/" +  sName + " | "+groupedDifferencesOnlyValues.get(searchKey)+" \n");
                 }
                 overallSummaryFileWriter.write("\n");
                 overallSummaryFileWriter.write("\n");
@@ -216,10 +268,16 @@ public class ExcelComparison {
             overallSummaryFileWriter.close();
         }
 
-        // Clear the groupedCellChanges map for the next folder comparison
+        // Clear the groupedCellChanges,rowChanges,columnChanges,rowChangesMessageMap for the next folder comparison
         groupedCellChanges.clear();
+        rowChanges.clear();
+        columnChanges.clear();
 
-        return changedFilesCount == 0 && addedFiles.isEmpty() && removedFiles.isEmpty();
+        if(rowChangesMessageMap.isEmpty()){
+            return changedFilesCount == 0 && addedFiles.isEmpty() && removedFiles.isEmpty();
+        }
+        rowChangesMessageMap.clear();
+        return false;
     }
 
     // Function to check if two Excel files are equal
@@ -228,9 +286,6 @@ public class ExcelComparison {
 
         Workbook workbook1 = null;
         Workbook workbook2 = null;
-
-        // To keep track of differences
-        boolean filesEqual = true;
 
         // Map For grouped differences file wise
         Map<String, List<String>> groupedDifferences = null;
@@ -279,8 +334,18 @@ public class ExcelComparison {
 
                 // Checking for number of rows in both sheets
                 if (numberOfRowsInSheet1 != numberOfRowsInSheet2) {
-                    System.out.println("Number of rows in sheet " + s1.getSheetName() + " are not the same");
-                    System.exit(0);
+                    int differenceInRows = numberOfRowsInSheet1 - numberOfRowsInSheet2;
+                    String message;
+
+                    if(differenceInRows > 0){
+                        message = Math.abs(differenceInRows) + " Rows Deleted!! ";
+                    }else{
+                        message = Math.abs(differenceInRows) + " Rows Added!! ";
+                    }
+                    rowChangesMessageMap.put(file1.getName()+"/"+s1.getSheetName(),message);
+//                    System.out.println("Number of rows in sheet " + s1.getSheetName() + " are not the same");
+//                    System.exit(0);
+                    continue;
                 }
 
                 // Checking for number of cells in each row of particular sheet
@@ -307,19 +372,64 @@ public class ExcelComparison {
                         String cellValue1 = getFormattedCellValue(cell1);
                         String cellValue2 = getFormattedCellValue(cell2);
 
+                        String cellValue1Type = "";
+                        String cellValue2Type = "";
+
+                        Integer i1 = tryParseInteger(cellValue1);
+                        Float f1 = tryParseFloat(cellValue2);
+
+                        Integer i2 = tryParseInteger(cellValue2);
+                        Float f2 = tryParseFloat(cellValue1);
+
+                        if (i1 != null) {
+                            cellValue1Type = "Integer";
+                        } else if (f1 != null) {
+                            cellValue1Type = "Float";
+                        }
+
+                        if (i2 != null) {
+                            cellValue2Type = "Integer";
+                        } else if (f2 != null) {
+                            cellValue2Type = "Float";
+                        }
+
                         if (!cellValue1.equals(cellValue2)) {
 
                             // Create a cellKey which is helpful for storing (file name + sheet name + row number + column number)
                             String cellKey = file1.getName() + "#" + s1.getSheetName() + "#" + (j + 1) + "#" + (k + 1);
                             char columnChar = (char) ('A' + (k));
 
+                            rowChanges.add(j+1);
+                            columnChanges.add(columnChar+"");
+
+                            sheetCollection.add(s1.getSheetName());
+
                             // Store the difference in the map, grouped by the cell key
                             List<String> diffnce = groupedDifferences.getOrDefault(cellKey, new ArrayList<>());
 
+                            String groupedDifferenceCell1 = cellValue1;
+                            String groupedDifferenceCell2 = cellValue2;
+
                             // Add the difference to the list
-                            String difference = "Difference at Sheet: \"" + s1.getSheetName() + "\", Cell: "+ columnChar+ (j + 1) + "\n"
-                                    + "Original: " + cellValue1 + "\n"
-                                    + "Revised: " + cellValue2 + "\n";
+                            String difference = "Difference at Sheet: \"" + s1.getSheetName() + "\", Cell: "+ columnChar+ (j + 1) + ", "
+                                    + "Original: " + cellValue1 +", "
+                                    + "Revised: " + cellValue2 ;
+
+                            if ((cellValue1Type.equals("Integer") && cellValue2Type.equals("Float"))) {
+                                difference = "Difference at Sheet: \"" + s1.getSheetName() + "\", Cell: "+ columnChar+ (j + 1) + ", "
+                                        + "Original: " + cellValue1 + " ( "+cellValue1Type+" )"+", "
+                                        + "Revised: " + cellValue2 + " ( "+cellValue2Type+" ) ";
+                                groupedDifferenceCell1 += " ( "+cellValue1Type+" )";
+                                groupedDifferenceCell2 += " ( "+cellValue2Type+" )";
+                            }else if((cellValue1Type.equals("Float") && cellValue2Type.equals("Integer"))){
+                                difference = "Difference at Sheet: \"" + s1.getSheetName() + "\", Cell: "+ columnChar+ (j + 1) + ", "
+                                        + "Original: " + cellValue1 + " ( "+cellValue1Type+" )"+", "
+                                        + "Revised: " + cellValue2 + " ( "+cellValue2Type+" ) ";
+                                groupedDifferenceCell1 += " ( "+cellValue1Type+" )";
+                                groupedDifferenceCell2 += " ( "+cellValue2Type+" )";
+                            }
+
+                            groupedDifferencesOnlyValues.put(cellKey,"["+groupedDifferenceCell1+" -> "+groupedDifferenceCell2+"]");
                             differences.add(difference);
                             diffnce.add(difference);
                             groupedDifferences.put(cellKey,diffnce);
@@ -330,7 +440,6 @@ public class ExcelComparison {
 
         } catch (Exception e) {
             e.printStackTrace();
-            filesEqual = false; // Set to false in case of exceptions
         } finally {
             if (workbook1 != null) {
                 workbook1.close();  //close workbook1.
@@ -343,8 +452,6 @@ public class ExcelComparison {
         // Print all the grouped differences together
         if (!groupedDifferences.isEmpty()) {
             for (Map.Entry<String, List<String>> entry : groupedDifferences.entrySet()) {
-                List<String> differences1 = entry.getValue();
-
                 //Extract key and get filename,sheetname and cell number.
                 String overallKey = entry.getKey();
                 String[] arr = overallKey.split("#");
@@ -397,6 +504,22 @@ public class ExcelComparison {
             default -> {
                 return "Unsupported Cell Type";
             }
+        }
+    }
+
+    public static Integer tryParseInteger(String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return null; // Parsing failed
+        }
+    }
+
+    public static Float tryParseFloat(String value) {
+        try {
+            return Float.parseFloat(value);
+        } catch (NumberFormatException e) {
+            return null; // Parsing failed
         }
     }
 }
