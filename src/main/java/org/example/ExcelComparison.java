@@ -373,13 +373,13 @@ public class ExcelComparison {
 
                     // Checking for number of rows in both sheets
                     if (noOfColumnsInRow1 != noOfColumnsInRow2) {
-                        int differenceInRows = noOfColumnsInRow1 - noOfColumnsInRow2;
+                        int differenceInColumns = noOfColumnsInRow1 - noOfColumnsInRow2;
                         String message;
 
-                        if(differenceInRows > 0){
-                            message = "[-] "+ Math.abs(differenceInRows) + " Column Deleted!! ";
+                        if(differenceInColumns > 0){
+                            message = "[-] "+ Math.abs(differenceInColumns) + " Column Deleted!! ";
                         }else{
-                            message = "[+] "+ Math.abs(differenceInRows) + " Column Added!! ";
+                            message = "[+] "+ Math.abs(differenceInColumns) + " Column Added!! ";
                         }
                         columnChangesMessageMap.put(file1.getName()+"/"+s1.getSheetName()+" -> [ row no.  -> "+(j+1)+" ]",message);
                         continue;
