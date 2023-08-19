@@ -13,34 +13,26 @@ public class ExcelComparison {
 
     public static Map<String, List<String>> groupedCellChanges = new HashMap<>();
     public static Map<String, String> groupedDifferencesOnlyValues = new HashMap<>();
-
     public static String v1FolderPath = "";
-
     public static Set<String> sheetCollection = new HashSet<>();
-
     public static Set<Integer> rowChanges = new HashSet<>();
-
     public static Set<String> columnChanges = new HashSet<>();
-
     public static Map<String,String> rowChangesMessageMap = new HashMap<>();
+    public static Map<String,String> columnChangesMessageMap = new HashMap<>();
 
     public static void main(String[] args) throws IOException {
 
-
          //Takes input of two folders from USER
-//         Scanner input = new Scanner(System.in);
+        Scanner input = new Scanner(System.in);
 
-//         System.out.print("Enter path of version1 folder :: ");
-//         v1FolderPath = input.nextLine();
-//         System.out.print("Enter path of version2 folder :: ");
-//         String v2FolderPath = input.nextLine();
-//
-//        System.out.print("Enter output folder path :: ");
-//        String outputFolderPath = input.nextLine();
-//
-            v1FolderPath = "C:\\Users\\HET SHAH\\OneDrive\\Desktop\\output\\9b2fc623104532fa09b9db54a2d2a5fc7c57d8a5";
-            String v2FolderPath = "C:\\Users\\HET SHAH\\OneDrive\\Desktop\\output\\f836ece227d98bceda7b89d31b0614a35ed6e5e9";
-            String outputFolderPath = "C:\\Users\\HET SHAH\\OneDrive\\Desktop\\output\\diff";
+        System.out.print("Enter path of version1 folder :: ");
+        v1FolderPath = input.nextLine();
+
+        System.out.print("Enter path of version2 folder :: ");
+        String v2FolderPath = input.nextLine();
+
+        System.out.print("Enter output folder path :: ");
+        String outputFolderPath = input.nextLine();
 
         boolean areVersionsSame = compareExcelFilesInFolders(v1FolderPath, v2FolderPath,outputFolderPath);
 
@@ -175,29 +167,33 @@ public class ExcelComparison {
             overallSummaryFileWriter.write("\n");
             overallSummaryFileWriter.write("\n");
 
-            overallSummaryFileWriter.write("------------------------------------------------------\n");
-            overallSummaryFileWriter.write("Global Changes in Files: "+"\n");
-            overallSummaryFileWriter.write("------------------------------------------------------\n");
-            overallSummaryFileWriter.write("\t\t\t\t* Row - ");
-            for(Integer rowNumber:rowChanges){
-                overallSummaryFileWriter.write(rowNumber+",");
+            if(!rowChanges.isEmpty() && !columnChanges.isEmpty()) {
+                overallSummaryFileWriter.write("------------------------------------------------------\n");
+                overallSummaryFileWriter.write("Global Changes in Files: " + "\n");
+                overallSummaryFileWriter.write("------------------------------------------------------\n");
+                overallSummaryFileWriter.write("\t\t\t\t* Row - ");
+                for (Integer rowNumber : rowChanges) {
+                    overallSummaryFileWriter.write(rowNumber + ",");
+                }
+                overallSummaryFileWriter.write("\n");
+                overallSummaryFileWriter.write("\t\t\t\t* Column - ");
+                for (String colNumber : columnChanges) {
+                    overallSummaryFileWriter.write(colNumber + ",");
+                }
+                overallSummaryFileWriter.write("\n");
+                overallSummaryFileWriter.write("\n");
             }
-            overallSummaryFileWriter.write("\n");
-            overallSummaryFileWriter.write("\t\t\t\t* Column - ");
-            for(String colNumber:columnChanges){
-                overallSummaryFileWriter.write(colNumber+",");
-            }
-            overallSummaryFileWriter.write("\n");
-            overallSummaryFileWriter.write("\n");
 
-            overallSummaryFileWriter.write("------------------------------------------------------\n");
-            overallSummaryFileWriter.write("Global Changes in Sheets: "+"\n");
-            overallSummaryFileWriter.write("------------------------------------------------------\n");
-            for (String sheetName : sheetCollection) {
-                overallSummaryFileWriter.write("                    "+"* "+sheetName+"\n");
+            if(!sheetCollection.isEmpty()) {
+                overallSummaryFileWriter.write("------------------------------------------------------\n");
+                overallSummaryFileWriter.write("Global Changes in Sheets: " + "\n");
+                overallSummaryFileWriter.write("------------------------------------------------------\n");
+                for (String sheetName : sheetCollection) {
+                    overallSummaryFileWriter.write("                    " + "* " + sheetName + "\n");
+                }
+                overallSummaryFileWriter.write("\n");
+                overallSummaryFileWriter.write("\n");
             }
-            overallSummaryFileWriter.write("\n");
-            overallSummaryFileWriter.write("\n");
 
             if(!rowChangesMessageMap.isEmpty()){
                 overallSummaryFileWriter.write("------------------------------------------------------\n");
@@ -211,38 +207,50 @@ public class ExcelComparison {
                 overallSummaryFileWriter.write("\n");
             }
 
-
-            overallSummaryFileWriter.write("------------------------------------------------------\n");
-            overallSummaryFileWriter.write("Cell changes in Files"+"\n");
-            overallSummaryFileWriter.write("------------------------------------------------------\n");
-            overallSummaryFileWriter.write("Cell Number     :    FileName/SheetName"+"\n");
-            for(Map.Entry<String,List<String>> entry : groupedCellChanges.entrySet())
-            {
-                String cellKey = entry.getKey();
-                List<String> filesAndSheets = entry.getValue();
-
-                // For extracting column number
-                String[] arr = cellKey.split("#");
-
-                int row = Integer.parseInt(arr[0]);
-                int column = Integer.parseInt(arr[1]);
-
-                // Here we get column in Excel type english character
-                char columnChar = (char) ('A' + (column - 1));
-
-                overallSummaryFileWriter.write("   "  + columnChar + row + "     \t:\t"+"\n");
-
-                for(String fileAndSheet : filesAndSheets)
+            if(!columnChangesMessageMap.isEmpty()){
+                overallSummaryFileWriter.write("------------------------------------------------------\n");
+                overallSummaryFileWriter.write("Column Affected: "+"\n");
+                overallSummaryFileWriter.write("------------------------------------------------------\n");
+                for(Map.Entry<String,String> entry : columnChangesMessageMap.entrySet())
                 {
-                    String[] fileSheet = fileAndSheet.split("/");
-                    String fName = fileSheet[0];
-                    String sName = fileSheet[1];
-                    String searchKey = fName+"#"+sName+"#"+cellKey;
-
-                    overallSummaryFileWriter.write( "\t\t\t"+"* "+fName  + "/" +  sName + " | "+groupedDifferencesOnlyValues.get(searchKey)+" \n");
+                    overallSummaryFileWriter.write("     * "+entry.getKey()+" ----> "+entry.getValue()+"\n");
                 }
                 overallSummaryFileWriter.write("\n");
                 overallSummaryFileWriter.write("\n");
+            }
+
+
+            if(!groupedCellChanges.isEmpty()) {
+                overallSummaryFileWriter.write("------------------------------------------------------\n");
+                overallSummaryFileWriter.write("Cell changes in Files" + "\n");
+                overallSummaryFileWriter.write("------------------------------------------------------\n");
+                overallSummaryFileWriter.write("Cell Number     :    FileName/SheetName" + "\n");
+                for (Map.Entry<String, List<String>> entry : groupedCellChanges.entrySet()) {
+                    String cellKey = entry.getKey();
+                    List<String> filesAndSheets = entry.getValue();
+
+                    // For extracting column number
+                    String[] arr = cellKey.split("#");
+
+                    int row = Integer.parseInt(arr[0]);
+                    int column = Integer.parseInt(arr[1]);
+
+                    // Here we get column in Excel type english character
+                    char columnChar = (char) ('A' + (column - 1));
+
+                    overallSummaryFileWriter.write("   " + columnChar + row + "     \t:\t" + "\n");
+
+                    for (String fileAndSheet : filesAndSheets) {
+                        String[] fileSheet = fileAndSheet.split("/");
+                        String fName = fileSheet[0];
+                        String sName = fileSheet[1];
+                        String searchKey = fName + "#" + sName + "#" + cellKey;
+
+                        overallSummaryFileWriter.write("\t\t\t" + "* " + fName + "/" + sName + " | " + groupedDifferencesOnlyValues.get(searchKey) + " \n");
+                    }
+                    overallSummaryFileWriter.write("\n");
+                    overallSummaryFileWriter.write("\n");
+                }
             }
 
             // Print added or removed files if there exist.
@@ -273,10 +281,11 @@ public class ExcelComparison {
         rowChanges.clear();
         columnChanges.clear();
 
-        if(rowChangesMessageMap.isEmpty()){
+        if(rowChangesMessageMap.isEmpty() && columnChangesMessageMap.isEmpty()){
             return changedFilesCount == 0 && addedFiles.isEmpty() && removedFiles.isEmpty();
         }
         rowChangesMessageMap.clear();
+        columnChangesMessageMap.clear();
         return false;
     }
 
@@ -338,13 +347,11 @@ public class ExcelComparison {
                     String message;
 
                     if(differenceInRows > 0){
-                        message = Math.abs(differenceInRows) + " Rows Deleted!! ";
+                        message = "[-] "+ Math.abs(differenceInRows) + " Rows Deleted!! ";
                     }else{
-                        message = Math.abs(differenceInRows) + " Rows Added!! ";
+                        message = "[+] "+ Math.abs(differenceInRows) + " Rows Added!! ";
                     }
                     rowChangesMessageMap.put(file1.getName()+"/"+s1.getSheetName(),message);
-//                    System.out.println("Number of rows in sheet " + s1.getSheetName() + " are not the same");
-//                    System.exit(0);
                     continue;
                 }
 
@@ -358,6 +365,23 @@ public class ExcelComparison {
                         continue; // Both rows are null or empty, move to the next row
                     } else if (row1 == null || row2 == null) {
                         System.out.println("Difference found at sheet " + s1.getSheetName() + ", row " + (j + 1) + " (One row is missing)");
+                        continue;
+                    }
+
+                    int noOfColumnsInRow1 = row1.getLastCellNum();
+                    int noOfColumnsInRow2 = row2.getLastCellNum();
+
+                    // Checking for number of rows in both sheets
+                    if (noOfColumnsInRow1 != noOfColumnsInRow2) {
+                        int differenceInRows = noOfColumnsInRow1 - noOfColumnsInRow2;
+                        String message;
+
+                        if(differenceInRows > 0){
+                            message = "[-] "+ Math.abs(differenceInRows) + " Column Deleted!! ";
+                        }else{
+                            message = "[+] "+ Math.abs(differenceInRows) + " Column Added!! ";
+                        }
+                        columnChangesMessageMap.put(file1.getName()+"/"+s1.getSheetName()+" -> [ row no.  -> "+(j+1)+" ]",message);
                         continue;
                     }
 
